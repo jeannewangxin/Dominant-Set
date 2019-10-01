@@ -19,48 +19,136 @@ import java.io.InputStreamReader;
 
 public class DefaultTeam {
 	public ArrayList<Point> calculDominatingSet(ArrayList<Point> points, int edgeThreshold) {
-		ArrayList<Point> ds = (ArrayList<Point>) points.clone();
+//		ArrayList<Point> ds = new ArrayList<Point>();
+//		ArrayList<Point> res = new ArrayList<Point>();
+//		ds  = greedy(points,edgeThreshold);//只用这个95.64
+//		ds = deleteOne(points,ds,edgeThreshold);//+ 这个95.34
+//		ds = remove2add1(ds,points,edgeThreshold);
+//
+//		return ds;
+		ArrayList<Point> result = (ArrayList<Point>) points.clone();
+
+		for (int i = 0; i < 3; i++) {
+			ArrayList<Point> doSet = localSearch(greedy(points, edgeThreshold), points, edgeThreshold);
+
+			System.out.println("MAIN. Current sol: " + result.size() + ". Found next sol: " + doSet.size());
+
+			if (doSet.size() < result.size())
+				result = doSet;
+		}
+		System.out.println("MAIN. result: " + result.size());
+
+		return result;
+//		
+//		ArrayList<Point> separateur = getMiniSparateur(points, edgeThreshold);
+//		ArrayList<Point> result = (ArrayList<Point>) separateur.clone();
+//		result.addAll(greedy(points,edgeThreshold));//只用这个95.64
+//		
+//		return result;
+	}
+
+	private ArrayList<Point> localSearch(ArrayList<Point> firstSolution, ArrayList<Point> points, int edgeThreshold) {
+		/*
+		 * 1.找到separateur，加入结果 2.分为左右两边，分别greedy之后加入 3.最后的结果进行删减（先一个个减，二代1）
+		 * 
+		 */
+
+		ArrayList<Point> current = removeDuplicates(firstSolution);
 		ArrayList<Point> separateur = getMiniSparateur(points, edgeThreshold);
-//		System.out.println("separateur:");
-//		for (Point p : separateur) {
-//			System.out.println("(" + p.x + "," + p.y + ");");
-//		}
-		ArrayList<Point> result = (ArrayList<Point>) separateur.clone();
-		result.addAll(greedy(points,edgeThreshold));//只用这个95.64
+		ArrayList<Point> result = removeDuplicates(separateur);
 		while (!isValid(result, points, edgeThreshold)) {
 			ArrayList<Point> gauch = getGaucheX(points, separateur, edgeThreshold);
 			ArrayList<Point> droit = getDroitX(points, separateur, edgeThreshold);
-//			if(gauch.size()>points.size()*0.2) {
-//				ArrayList<Point> part = new ArrayList<Point>();
-//				part = calculPart(gauch,edgeThreshold);
-//				result.addAll(part);
-//			}else if(droit.size()>points.size()*0.2) {
-//				ArrayList<Point> part = new ArrayList<Point>();
-//				part = calculPart(droit,edgeThreshold);
-//				result.addAll(part);
-//			}else {
-				result.addAll(greedy(gauch, edgeThreshold));
-				result.addAll(greedy(droit, edgeThreshold));
-//			}
+			ArrayList<Point> gauchcan = greedy(gauch, edgeThreshold);
+			gauchcan = deleteOne(gauch, gauchcan, edgeThreshold);
+			do {
+				current = gauchcan;
+				gauchcan = remove2add1(gauchcan, gauch, edgeThreshold);
+			} while (score(current) > score(gauchcan));// 当current的size > ne
+			result.addAll(current);
+
+			ArrayList<Point> droitcan = greedy(droit, edgeThreshold);
+			droitcan = deleteOne(droit, droitcan, edgeThreshold);
+			do {
+				current = droitcan;
+				droitcan = remove2add1(droitcan, droit, edgeThreshold);
+			} while (score(current) > score(droitcan));// 当current的size > ne
+
+			result.addAll(droitcan);
 		}
-		System.out.print("size:"+result.size());
-		return result;
+		ArrayList<Point> can = (ArrayList<Point>) result.clone();
+		return can;
+
+		/*
+		 * // firstSolution = solution of greedy ArrayList<Point> current =
+		 * removeDuplicates(firstSolution); // next = 去掉重复之后的 firstSolution
+		 * ArrayList<Point> next = (ArrayList<Point>) current.clone();
+		 * System.out.println("LS. First sol(Solution of greedy): " + current.size());
+		 * 
+		 * do { current = next; next = remove2add1(current, points, edgeThreshold);
+		 * System.out.println("LS. Current sol: " + current.size() +
+		 * ". Found next sol: " + next.size()); } while (score(current) >
+		 * score(next));// 当current的size > next的size的时候，current = next;
+		 * 
+		 * System.out.println("LS. Last sol: " + current.size()); return next;
+		 */
 	}
 
 	public ArrayList<Point> calculPart(ArrayList<Point> points, int edgeThreshold) {
-		ArrayList<Point> ds = (ArrayList<Point>) points.clone();
 		ArrayList<Point> separateur = getMiniSparateur(points, edgeThreshold);
 		ArrayList<Point> result = (ArrayList<Point>) separateur.clone();
 		while (!isValid(result, points, edgeThreshold)) {
 			ArrayList<Point> gauch = getGaucheX(points, separateur, edgeThreshold);
 			ArrayList<Point> droit = getDroitX(points, separateur, edgeThreshold);
-				result.addAll(greedy(gauch, edgeThreshold));
-				result.addAll(greedy(droit, edgeThreshold));
+			result.addAll(greedy(gauch, edgeThreshold));
+			result.addAll(greedy(droit, edgeThreshold));
 		}
-		
+
 		return result;
 	}
-	
+
+	public ArrayList<Point> deleteOne(ArrayList<Point> pointsIn, ArrayList<Point> firstResult, int edgeThreshold) {
+		ArrayList<Point> result = removeDuplicates(firstResult);
+		ArrayList<Point> candidat = (ArrayList<Point>) result.clone();
+		for (Point p : result) {
+			candidat.remove(p);
+			if (isValid(result, pointsIn, edgeThreshold)) {
+				return result;
+			}
+			result.add(p);
+		}
+
+		return result;
+	}
+
+	private ArrayList<Point> remove2add1(ArrayList<Point> candidate, ArrayList<Point> points, int edgeThreshold) {
+		ArrayList<Point> test = removeDuplicates(candidate);
+		long seed = System.nanoTime();
+		Collections.shuffle(test, new Random(seed));// test = 把原来的solution去重，打乱
+		ArrayList<Point> rest = removeDuplicates(points);// 所有的点去重
+		rest.removeAll(test); // rest = 去掉solution的点
+
+		for (int i = 0; i < test.size(); i++) {
+			for (int j = i + 1; j < test.size(); j++) {
+				Point q = test.remove(j);
+				Point p = test.remove(i);
+				// 去掉两个点试试看
+				for (Point r : rest) {
+					if (r.distance(q) <= 3.85 * edgeThreshold && r.distance(p) <= 3.85 * edgeThreshold) {
+						test.add(r);
+						if (isValid(test, points, edgeThreshold))
+							return test;
+						test.remove(r);
+					}
+				}
+				test.add(i, p);
+				test.add(j, q);
+			}
+		}
+
+		return candidate;
+	}
+
 	// FILE PRINTER
 	private void saveToFile(String filename, ArrayList<Point> result) {
 		int index = 0;
@@ -262,7 +350,7 @@ public class DefaultTeam {
 				candidat.remove(point);
 			}
 		}
-		// System.out.println("Cherche des points a gauches,nombre = "+reste.size());
+		System.out.println("Cherche des points a gauches,nombre = " + candidat.size());
 		return candidat;
 	}
 
@@ -275,10 +363,11 @@ public class DefaultTeam {
 		int max = getMaxX(separteur);
 		ArrayList<Point> candidat = (ArrayList<Point>) reste.clone();
 		for (Point p : reste) {
-			if (p.x < max)
-				{candidat.remove(p);}
+			if (p.x < max) {
+				candidat.remove(p);
+			}
 		}
-		// System.out.println("Cherche des points a droit,nombre = "+reste.size());
+		System.out.println("Cherche des points a droit,nombre = " + candidat.size());
 		return candidat;
 	}
 
