@@ -47,7 +47,7 @@ public class DefaultTeam {
 
 		ArrayList<Point> rest = (ArrayList<Point>) points.clone();
 		ArrayList<Point> sol = new ArrayList<>();
-		
+		 
 		ArrayList<Point> notSol = new ArrayList<>();
 		ArrayList<Integer> bests = new ArrayList<>(256);
 		
@@ -73,11 +73,11 @@ public class DefaultTeam {
 				} else if (maxNeigh == nbNeigh) { // equalizing 
 					bests.add(i);
 				}
-			}
+			}//choose the points with highest degree
 
 			maxI = bests.get(ThreadLocalRandom.current().nextInt(bests.size()));
 
-			Point p = swapRemove(rest, maxI);
+			Point p = swapRemove(rest, maxI);//remove point maxI without change other points and indexs
 			sol.add(p);
 			
 			for (int i = 0; i < rest.size(); i++) {
